@@ -1,0 +1,12 @@
+{
+  "domain": "resident_bed",
+  "name": "Resident Bed",
+  "version": "0.1.0",
+  "config_flow": true,
+  "requirements": ["result==0.7.0"],
+  "bluetooth": [
+    {
+      "service_uuid": "62741523-52f9-8864-b1ab-3b3a8d65950b"
+    }
+  ]
+}

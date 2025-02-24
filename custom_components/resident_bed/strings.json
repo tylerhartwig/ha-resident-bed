@@ -1,0 +1,42 @@
+{
+  "entity": {
+    "button": {
+      "LED_button": {
+        "name": "LED"
+      },
+      "Flat_button": {
+        "name": "Flat"
+      },
+      "ZeroGravity_button": {
+        "name": "Zero Gravity"
+      },
+      "Reading_button": {
+        "name": "Reading"
+      },
+      "TV_button": {
+        "name": "TV"
+      },
+      "Sleeping_button": {
+        "name": "Sleeping"
+      },
+      "HeadUp_button": {
+        "name": "Head Up"
+      },
+      "HeadDown_button": {
+        "name": "Head Down"
+      },
+      "FeetUp_button": {
+        "name": "Feet Up"
+      },
+      "FeetDown_button": {
+        "name": "Feet Down"
+      },
+      "M1_button": {
+        "name": "M1"
+      },
+      "M2_button": {
+        "name": "M2"
+      }
+    }
+  }
+}
