@@ -30,6 +30,7 @@ class ResidentBed:
                 await bleak_client.read_gatt_char(READ_NOTIFY_CONTROL_HANDLE)
                 return True
             else:
+                await bleak_client.read_gatt_char(READ_NOTIFY_CONTROL_HANDLE)
                 await bleak_client.pair()
                 return True
 
