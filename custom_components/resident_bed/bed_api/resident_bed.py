@@ -20,16 +20,16 @@ class ResidentBed:
 
     async def async_setup(self):
         _LOGGER.info("Connecting to Resident Bed")
-        try:
-            await self.bleak_client.connect()
-            _LOGGER.info(f"Connection Complete!")
-        except Exception as e:
-            _LOGGER.error(f"Failed to connect to Resident Bed with exception {e}")
-            return False
+        # try:
+        # except Exception as e:
+        #     _LOGGER.error(f"Failed to connect to Resident Bed with exception {e}")
+        #     return False
 
 
         try:
             if platform.system() == "Darwin":
+                await self.bleak_client.connect()
+                _LOGGER.info(f"Connection Complete!")
                 _LOGGER.info("Running on macOS, reading char to initiate pair")
                 await self.bleak_client.read_gatt_char(READ_NOTIFY_CONTROL_HANDLE)
                 return True
