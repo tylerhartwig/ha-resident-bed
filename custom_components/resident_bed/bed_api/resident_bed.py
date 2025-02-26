@@ -26,9 +26,6 @@ class ResidentBed:
         except:
             _LOGGER.error("Failed to connect to Resident Bed")
 
-        self.service_collection = self.bleak_client.services
-        self.notification_char = self.service_collection.get_characteristic(READ_NOTIFY_CONTROL_HANDLE)
-        self.control_char = self.service_collection.get_characteristic(READ_NOTIFY_CONTROL_HANDLE)
 
         try:
             if platform.system() == "Darwin":
@@ -39,7 +36,12 @@ class ResidentBed:
                 _LOGGER.info("Running on Linux, Initiating Pairing")
                 await self.bleak_client.pair()
                 _LOGGER.info("Pairing Complete")
+
                 return True
+
+            self.service_collection = self.bleak_client.services
+            self.notification_char = self.service_collection.get_characteristic(READ_NOTIFY_CONTROL_HANDLE)
+            self.control_char = self.service_collection.get_characteristic(READ_NOTIFY_CONTROL_HANDLE)
 
         except:
             _LOGGER.error("Failed to connect")
