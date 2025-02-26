@@ -23,8 +23,9 @@ class ResidentBed:
         try:
             await self.bleak_client.connect()
             _LOGGER.info(f"Connection Complete!")
-        except:
-            _LOGGER.error("Failed to connect to Resident Bed")
+        except Exception as e:
+            _LOGGER.error(f"Failed to connect to Resident Bed with exception {e}")
+            return False
 
 
         try:
@@ -43,8 +44,8 @@ class ResidentBed:
             self.notification_char = self.service_collection.get_characteristic(READ_NOTIFY_CONTROL_HANDLE)
             self.control_char = self.service_collection.get_characteristic(READ_NOTIFY_CONTROL_HANDLE)
 
-        except:
-            _LOGGER.error("Failed to connect")
+        except Exception as e:
+            _LOGGER.error(f"Failed to connect with exception {e}")
             return False
 
 
