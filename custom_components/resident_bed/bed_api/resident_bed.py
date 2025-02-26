@@ -1,11 +1,13 @@
 import binascii
 import os
 import platform
+import logging
 
 from bleak import BleakClient
 
 from .command import *
 
+_LOGGER = logging.getLogger(__name__)
 
 class ResidentBed:
 
@@ -13,34 +15,36 @@ class ResidentBed:
         self.control_char = None
         self.notification_char = None
         self.service_collection = None
-        # self.bleak_client = bleak_client
+        self.bleak_client = bleak_client
 
 
-    async def async_setup(self, bleak_client):
-        print("Connecting")
-        con_result = await bleak_client.connect()
-        print(f"Connection result: {con_result}")
+    async def async_setup(self):
+        _LOGGER.info("Connecting to Resident Bed")
+        con_result = await self.bleak_client.connect()
+        _LOGGER.info(f"Connection Complete! Result: {con_result}")
 
-        self.service_collection = bleak_client.services
+        self.service_collection = self.bleak_client.services
         self.notification_char = self.service_collection.get_characteristic(READ_NOTIFY_CONTROL_HANDLE)
         self.control_char = self.service_collection.get_characteristic(READ_NOTIFY_CONTROL_HANDLE)
 
         try:
             if platform.system() == "Darwin":
-                await bleak_client.read_gatt_char(READ_NOTIFY_CONTROL_HANDLE)
+                _LOGGER.info("Running on macOS, reading char to initiate pair")
+                await self.bleak_client.read_gatt_char(READ_NOTIFY_CONTROL_HANDLE)
                 return True
             else:
-                await bleak_client.pair()
-                await bleak_client.read_gatt_char(READ_NOTIFY_CONTROL_HANDLE)
+                _LOGGER.info("Running on Linux, Initiating Pairing")
+                await self.bleak_client.pair()
+                _LOGGER.info("Pairing Complete")
                 return True
 
         except:
-            print("Failed to connect")
+            _LOGGER.error("Failed to connect")
             return False
 
 
-    async def send_command(self, bleak_client, command: BedCommand):
-        await bleak_client.write_gatt_char(
+    async def send_command(self, command: BedCommand):
+        await self.bleak_client.write_gatt_char(
             WRITE_CONTROL_HANDLE,
             binascii.a2b_hex(command.value),
             response=True)
