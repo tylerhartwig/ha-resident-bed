@@ -20,8 +20,11 @@ class ResidentBed:
 
     async def async_setup(self):
         _LOGGER.info("Connecting to Resident Bed")
-        con_result = await self.bleak_client.connect()
-        _LOGGER.info(f"Connection Complete! Result: {con_result}")
+        try:
+            await self.bleak_client.connect()
+            _LOGGER.info(f"Connection Complete!")
+        except:
+            _LOGGER.error("Failed to connect to Resident Bed")
 
         self.service_collection = self.bleak_client.services
         self.notification_char = self.service_collection.get_characteristic(READ_NOTIFY_CONTROL_HANDLE)
