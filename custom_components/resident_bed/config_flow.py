@@ -48,7 +48,7 @@ class ResidentBedConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         _LOGGER.info(f"In async_step_connect, current input is {user_input}")
 
         mac = self._discovery_info.address
-        bed = ResidentBed(BleakClient(mac))
+        bed = ResidentBed(BleakClient(self._discovery_info.device))
         connection_result = await bed.async_setup()
 
         if connection_result:
