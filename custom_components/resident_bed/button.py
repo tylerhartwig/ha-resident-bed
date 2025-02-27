@@ -51,6 +51,7 @@ class ResidentBedButton(ResidentBedEntity):
         """Handle button press"""
         ble_device = bluetooth.async_ble_device_from_address(self.hass, self.mac, connectable=True)
         async with BleakClient(ble_device) as client:
+            await client.connect()
             await client.write_gatt_char(
                 WRITE_CONTROL_HANDLE,
                 binascii.a2b_hex(self.command.value), response=True)
