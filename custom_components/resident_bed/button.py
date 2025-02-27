@@ -57,7 +57,7 @@ class ResidentBedButton(ResidentBedEntity):
             _LOGGER.info(f"Service collection: {service_collection}")
             _LOGGER.info(f"characteristics: {characteristics}")
             await client.write_gatt_char(
-                "62741525-52f9-8864-b1ab-3b3a8d65950b",
+                "90311625-25fa-3346-12ef-3cfb7a2556ac",
                 binascii.a2b_hex(self.command.value), response=True)
 
         # _LOGGER.info(f"ble_device: {ble_device}")
