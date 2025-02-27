@@ -1,3 +1,4 @@
+from contextlib import AsyncExitStack
 from typing import Any
 
 import voluptuous as vol
@@ -20,6 +21,7 @@ class ResidentBedConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self):
         self._discovery_info: BluetoothServiceInfoBleak | None = None
         self.display_name: str | None = None
+        self._client_stack = AsyncExitStack()
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
         _LOGGER.info("In async_step_user")
@@ -48,7 +50,8 @@ class ResidentBedConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         _LOGGER.info(f"In async_step_connect, current input is {user_input}")
 
         mac = self._discovery_info.address
-        bed = ResidentBed(BleakClient(self._discovery_info.device))
+        client = await self._client_stack.enter_async_context(BleakClient(self._discovery_info.device, timeout=30))
+        bed = ResidentBed(client)
         connection_result = await bed.async_setup()
 
         if connection_result:
