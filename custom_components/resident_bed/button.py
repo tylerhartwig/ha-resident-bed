@@ -52,7 +52,7 @@ class ResidentBedButton(ResidentBedEntity):
         ble_device = bluetooth.async_ble_device_from_address(self.hass, self.mac, connectable=True)
         async with BleakClient(ble_device) as client:
             await client.connect()
-            service_collection = self.bleak_client.services
+            service_collection = client.services
             characteristics = service_collection.characteristics
             _LOGGER.info(f"Service collection: {service_collection}")
             _LOGGER.info(f"characteristics: {characteristics}")
