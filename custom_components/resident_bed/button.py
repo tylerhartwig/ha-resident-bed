@@ -56,14 +56,26 @@ class ResidentBedButton(ResidentBedEntity):
             characteristics = service_collection.characteristics
             _LOGGER.info(f"Service collection: {service_collection}")
             _LOGGER.info(f"characteristics: {characteristics}")
+
             control_char = None
+            notify_char = None
             for key, characteristic in characteristics.items():
                 if "62741525-52f9-8864-b1ab-3b3a8d65950b" == characteristic.uuid and 'write' in characteristic.properties:
                     control_char = characteristic
 
+                if "62741525-52f9-8864-b1ab-3b3a8d65950b" == characteristic.uuid and 'notify' in characteristic.properties:
+                    notify_char = characteristic
+
 
             _LOGGER.info(f"Control char: {control_char}")
+            _LOGGER.info(f"Notify char: {notify_char}")
 
+            await client.start_notify(notify_char, lambda a, b : None)
+            data = await client.read_gatt_char(notify_char)
+            _LOGGER.info(f"Read gatt char: {data}")
+
+
+            _LOGGER.info(f"Writing gatt char")
             await client.write_gatt_char(
                 control_char,
                 binascii.a2b_hex(self.command.value), response=True)
