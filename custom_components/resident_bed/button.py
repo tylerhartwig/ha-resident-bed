@@ -57,7 +57,7 @@ class ResidentBedButton(ResidentBedEntity):
             _LOGGER.info(f"Service collection: {service_collection}")
             _LOGGER.info(f"characteristics: {characteristics}")
             control_char = None
-            for key, characteristic in characteristics:
+            for key, characteristic in characteristics.items():
                 if characteristic.uuid=="62741523-52f9-8864-b1ab-3b3a8d65950b" and 'write' in characteristic.properties:
                     control_char = characteristic
 
