@@ -32,28 +32,40 @@ class ResidentBed:
                 _LOGGER.info(f"Connection Complete!")
                 _LOGGER.info("Running on macOS, reading char to initiate pair")
                 await self.bleak_client.read_gatt_char(READ_NOTIFY_CONTROL_HANDLE)
-                return True
+
             else:
                 _LOGGER.info("Running on Linux, Initiating Pairing")
                 await self.bleak_client.pair()
                 _LOGGER.info("Pairing Complete")
 
-                return True
 
             self.service_collection = self.bleak_client.services
-            self.notification_char = self.service_collection.get_characteristic(READ_NOTIFY_CONTROL_HANDLE)
-            self.control_char = self.service_collection.get_characteristic(READ_NOTIFY_CONTROL_HANDLE)
+            characteristics = self.service_collection.characteristics
+            _LOGGER.info(f"Service collection: {self.service_collection}")
+            _LOGGER.info(f"characteristics: {characteristics}")
+
+            for key, characteristic in characteristics.items():
+                if "62741525-52f9-8864-b1ab-3b3a8d65950b" == characteristic.uuid and 'write' in characteristic.properties:
+                    self.control_char = characteristic
+
+                if "62741525-52f9-8864-b1ab-3b3a8d65950b" == characteristic.uuid and 'notify' in characteristic.properties:
+                    self.notification_char = characteristic
+
+            return True
 
         except Exception as e:
             _LOGGER.error(f"Failed to connect with exception {e}")
             return False
 
-
     async def send_command(self, command: BedCommand):
-        await self.bleak_client.write_gatt_char(
-            WRITE_CONTROL_HANDLE,
-            binascii.a2b_hex(command.value),
-            response=True)
+        if self.bleak_client.is_connected:
+            await self.bleak_client.write_gatt_char(
+                WRITE_CONTROL_HANDLE,
+                binascii.a2b_hex(command.value),
+                response=True)
+        else:
+            _LOGGER.error(f"Bleak Client not connected")
+
 
 
     # async def tv_mode(self):

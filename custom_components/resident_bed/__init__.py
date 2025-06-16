@@ -10,9 +10,6 @@ async def async_setup_entry(hass, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     # hass.data[DOMAIN][PLATFORMS] = hass.data[DOMAIN][PLATFORMS]
 
-    for platform in PLATFORMS:
-        await hass.config_entries.async_forward_entry_setup(entry, platform)
-        # hass.async_create_task(
-        # )
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True

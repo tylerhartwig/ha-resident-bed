@@ -1,5 +1,6 @@
 import binascii
 import logging
+from sys import platform
 
 from bleak import BleakClient
 from homeassistant.components.button import ButtonDeviceClass, ButtonEntity
@@ -11,6 +12,7 @@ from homeassistant.components import bluetooth
 from .base import ResidentBedEntity
 
 from .bed_api.command import *
+from .bed_api.resident_bed import ResidentBed
 
 from .const import DOMAIN
 
@@ -47,40 +49,32 @@ class ResidentBedButton(ResidentBedEntity):
         self._attr_translation_key = f"{command.name}_button"
         self._attr_unique_id = f"{DOMAIN}_BED_{self.device_address}_{self.command.name}"
 
+
+    async def get_resident_bed(self):
+        bed = self.hass.data[DOMAIN].get(self.mac)
+
+        def on_disconnect(client):
+            self.hass.data[DOMAIN][self.mac] = None
+
+        if not bed:
+            # _LOGGER.info(f"No Bed device found for mac {self.mac}, setting up")
+            ble_device = bluetooth.async_ble_device_from_address(self.hass, self.mac, connectable=True)
+            bed = ResidentBed(BleakClient(ble_device, disconnected_callback = on_disconnect))
+
+            await bed.async_setup()
+
+            self.hass.data[DOMAIN][self.mac] = bed
+
+        # else:
+            # _LOGGER.info(f"Bed device found for mac {self.mac}, using cached bed")
+
+        return bed
+
     async def _async_press_action(self) -> None:
         """Handle button press"""
-        ble_device = bluetooth.async_ble_device_from_address(self.hass, self.mac, connectable=True)
-        async with BleakClient(ble_device) as client:
-            await client.connect()
-            service_collection = client.services
-            characteristics = service_collection.characteristics
-            _LOGGER.info(f"Service collection: {service_collection}")
-            _LOGGER.info(f"characteristics: {characteristics}")
+        bed = await self.get_resident_bed()
+        await bed.send_command(self.command)
 
-            control_char = None
-            notify_char = None
-            for key, characteristic in characteristics.items():
-                if "62741525-52f9-8864-b1ab-3b3a8d65950b" == characteristic.uuid and 'write' in characteristic.properties:
-                    control_char = characteristic
-
-                if "62741525-52f9-8864-b1ab-3b3a8d65950b" == characteristic.uuid and 'notify' in characteristic.properties:
-                    notify_char = characteristic
-
-
-            _LOGGER.info(f"Control char: {control_char}")
-            _LOGGER.info(f"Notify char: {notify_char}")
-
-            await client.start_notify(notify_char, lambda a, b : None)
-            data = await client.read_gatt_char(notify_char)
-            _LOGGER.info(f"Read gatt char: {data}")
-
-
-            _LOGGER.info(f"Writing gatt char")
-            await client.write_gatt_char(
-                control_char,
-                binascii.a2b_hex(self.command.value), response=True)
-
-        # _LOGGER.info(f"ble_device: {ble_device}")
 
     @property
     def unique_id(self) -> str:
