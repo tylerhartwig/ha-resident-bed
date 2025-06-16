@@ -60,7 +60,7 @@ class ResidentBed:
     async def send_command(self, command: BedCommand):
         if self.bleak_client.is_connected:
             await self.bleak_client.write_gatt_char(
-                WRITE_CONTROL_HANDLE,
+                self.control_char,
                 binascii.a2b_hex(command.value),
                 response=True)
         else:
