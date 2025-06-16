@@ -11,6 +11,8 @@ class BedCommand(str, Enum):
     TV =            "0c02000040000000000000000000"
     Sleeping =      "0c02000080000000000000000000"
 
+    HeadFeetUp =    "08020000000500000000"
+    HeadFeetDown =  "08020000000a00000000"
     HeadUp =        "0c02000000010000000000000000"
     HeadDown =      "0c02000000020000000000000000"
     FeetUp =        "0c02000000040000000000000000"
@@ -27,6 +29,8 @@ class BedCommand(str, Enum):
             case BedCommand.Reading: return "Reading"
             case BedCommand.TV: return "TV"
             case BedCommand.Sleeping: return "Sleeping"
+            case BedCommand.HeadFeetUp: return "Head & Feet Up"
+            case BedCommand.HeadFeetDown: return "Head & Feet Down"
             case BedCommand.HeadUp: return "Head Up"
             case BedCommand.HeadDown: return "Head Down"
             case BedCommand.FeetUp: return "Feet Up"
