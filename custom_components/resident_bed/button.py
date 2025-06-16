@@ -57,16 +57,20 @@ class ResidentBedButton(ResidentBedEntity):
             self.hass.data[DOMAIN][self.mac] = None
 
         if not bed:
-            # _LOGGER.info(f"No Bed device found for mac {self.mac}, setting up")
+            _LOGGER.info(f"No Bed device found for mac {self.mac}, setting up")
             ble_device = bluetooth.async_ble_device_from_address(self.hass, self.mac, connectable=True)
-            bed = ResidentBed(BleakClient(ble_device, disconnected_callback = on_disconnect))
+            _LOGGER.info(f"BLE Device is: {ble_device}")
+            client = BleakClient(ble_device, disconnected_callback=on_disconnect)
+            # _LOGGER.info(f"Client is: {client}")
+            bed = ResidentBed(client)
+            _LOGGER.info(f"Bed device is: {bed}")
 
             await bed.async_setup()
 
             self.hass.data[DOMAIN][self.mac] = bed
 
         # else:
-            # _LOGGER.info(f"Bed device found for mac {self.mac}, using cached bed")
+            _LOGGER.info(f"Bed device found for mac {self.mac}, using cached bed")
 
         return bed
 
