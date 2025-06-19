@@ -60,7 +60,7 @@ class ResidentBedButton(ResidentBedEntity):
             _LOGGER.info(f"No Bed device found for mac {self.mac}, setting up")
             ble_device = bluetooth.async_ble_device_from_address(self.hass, self.mac, connectable=True)
             _LOGGER.info(f"BLE Device is: {ble_device}")
-            client = BleakClient(ble_device, disconnected_callback=on_disconnect)
+            client = BleakClient(ble_device, disconnected_callback=on_disconnect, timeout=30)
             await client.connect()
             # _LOGGER.info(f"Client is: {client}")
             bed = ResidentBed(client)
