@@ -66,11 +66,10 @@ class ResidentBedButton(ResidentBedEntity):
             bed = ResidentBed(client)
             _LOGGER.info(f"Bed device is: {bed}")
 
-            await bed.async_setup()
+            if await bed.async_setup():
+                self.hass.data[DOMAIN][self.mac] = bed
 
-            self.hass.data[DOMAIN][self.mac] = bed
-
-        # else:
+        else:
             _LOGGER.info(f"Bed device found for mac {self.mac}, using cached bed")
 
         return bed
