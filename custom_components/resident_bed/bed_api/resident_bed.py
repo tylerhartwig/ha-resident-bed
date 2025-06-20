@@ -35,6 +35,11 @@ class ResidentBed:
 
             else:
                 _LOGGER.info("Running on Linux, Initiating Pairing")
+
+                # if not self.bleak_client.is_connected:
+                #     _LOGGER.info(f"BleakClient not connected, connecting now")
+                #     await self.bleak_client.connect()
+
                 await self.bleak_client.pair()
                 _LOGGER.info("Pairing Complete")
 
@@ -45,10 +50,13 @@ class ResidentBed:
             _LOGGER.info(f"characteristics: {characteristics}")
 
             for key, characteristic in characteristics.items():
+                _LOGGER.info(f"Characteristic: {key}, {characteristics}")
                 if "62741525-52f9-8864-b1ab-3b3a8d65950b" == characteristic.uuid and 'write' in characteristic.properties:
+                    _LOGGER.info(f"Write Characteristic UUID: {characteristic.uuid}")
                     self.control_char = characteristic
 
                 if "62741525-52f9-8864-b1ab-3b3a8d65950b" == characteristic.uuid and 'notify' in characteristic.properties:
+                    _LOGGER.info(f"Notify Characteristic UUID: {characteristic.uuid}")
                     self.notification_char = characteristic
 
             return True
