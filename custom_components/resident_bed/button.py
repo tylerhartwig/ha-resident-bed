@@ -62,6 +62,7 @@ class ResidentBedButton(ResidentBedEntity):
 
             _LOGGER.info(f"BLE Device is: {ble_device}")
             client = BleakClient(ble_device, disconnected_callback=on_disconnect, timeout=30)
+            _LOGGER.info(f"Created BleakClient: {client}")
 
 
             bed = ResidentBed(client)

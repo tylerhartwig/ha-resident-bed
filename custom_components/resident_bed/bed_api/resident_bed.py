@@ -34,7 +34,7 @@ class ResidentBed:
                 await self.bleak_client.read_gatt_char(READ_NOTIFY_CONTROL_HANDLE)
 
             else:
-                _LOGGER.info("Running on Linux, Initiating Pairing")
+                _LOGGER.info(f"Running on Linux, Initiating Pairing with client {self.bleak_client}")
 
                 # if not self.bleak_client.is_connected:
                 #     _LOGGER.info(f"BleakClient not connected, connecting now")
