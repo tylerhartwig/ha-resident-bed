@@ -76,7 +76,8 @@ class ResidentBedButton(ResidentBedEntity):
                 else:
                     _LOGGER.info(f"Running on Linux, Initiating Pairing with client")
 
-                    await client.pair()
+                    # if client.pair()
+                    # await client.pair()
                     _LOGGER.info("Pairing Complete")
                     # if not self.bleak_client.is_connected:
                     #     _LOGGER.info(f"BleakClient not connected, connecting now")
