@@ -54,6 +54,7 @@ class ResidentBedButton(ResidentBedEntity):
         bed = self.hass.data[DOMAIN].get(self.mac)
 
         def on_disconnect(client):
+            _LOGGER.info(f"Disconnected from {self.mac}")
             self.hass.data[DOMAIN][self.mac] = None
 
         if not bed:
@@ -61,7 +62,7 @@ class ResidentBedButton(ResidentBedEntity):
             ble_device = bluetooth.async_ble_device_from_address(self.hass, self.mac, connectable=True)
 
             _LOGGER.debug(f"BLE Device is: {ble_device}")
-            client = BleakClient(ble_device, disconnected_callback=on_disconnect, timeout=30)
+            client = BleakClient(ble_device, disconnected_callback=on_disconnect)
 
             if not client.is_connected:
                 _LOGGER.info(f"Client not connected, connecting")
