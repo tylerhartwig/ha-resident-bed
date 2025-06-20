@@ -88,9 +88,9 @@ class ResidentBedButton(ResidentBedEntity):
 
                 _LOGGER.info(f"Created new bed device, mac {self.mac}, setting up now")
 
-                if await bed.async_setup():
-                    self.hass.data[DOMAIN][self.mac] = bed
-                    return bed
+                await bed.async_setup()
+                self.hass.data[DOMAIN][self.mac] = bed
+                return bed
 
             except Exception as e:
                 _LOGGER.error(f"Failed to connect with exception {e}")
