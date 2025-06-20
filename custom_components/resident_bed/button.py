@@ -62,7 +62,7 @@ class ResidentBedButton(ResidentBedEntity):
 
             _LOGGER.info(f"BLE Device is: {ble_device}")
             client = BleakClient(ble_device, disconnected_callback=on_disconnect, timeout=30)
-            _LOGGER.info(f"Created BleakClient: {client}")
+            # _LOGGER.info(f"Created BleakClient: {client}")
 
             try:
                 if platform.system() == "Darwin":
@@ -72,9 +72,9 @@ class ResidentBedButton(ResidentBedEntity):
                     await self.bleak_client.read_gatt_char(READ_NOTIFY_CONTROL_HANDLE)
 
                 else:
-                    _LOGGER.info(f"Running on Linux, Initiating Pairing with client {self.bleak_client}")
+                    _LOGGER.info(f"Running on Linux, Initiating Pairing with client")
 
-                    await self.bleak_client.pair()
+                    await client.pair()
                     _LOGGER.info("Pairing Complete")
                     # if not self.bleak_client.is_connected:
                     #     _LOGGER.info(f"BleakClient not connected, connecting now")
