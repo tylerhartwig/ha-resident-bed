@@ -42,7 +42,7 @@ class ResidentBed:
         if self.bleak_client.is_connected:
             _LOGGER.debug(f"Writing gatt char {self.control_char}")
             await self.bleak_client.write_gatt_char(
-                self.control_char,
+                WRITE_CONTROL_HANDLE,
                 binascii.a2b_hex(command.value),
                 response=True)
         else:
