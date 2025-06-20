@@ -11,11 +11,12 @@ _LOGGER = logging.getLogger(__name__)
 
 class ResidentBed:
 
-    def __init__(self, bleak_client: BleakClient):
+    def __init__(self, get_ble_device):
         self.control_char = None
         self.notification_char = None
         self.service_collection = None
-        self.bleak_client = bleak_client
+        self.bleak_client = None
+        self.get_ble_device = get_ble_device
 
 
     async def async_setup(self):
@@ -25,23 +26,26 @@ class ResidentBed:
         #     _LOGGER.error(f"Failed to connect to Resident Bed with exception {e}")
         #     return False
 
+        _LOGGER.info(f"BLE Device is: {ble_device}")
+        client = BleakClient(ble_device, disconnected_callback=on_disconnect, timeout=30)
+        _LOGGER.info(f"Created BleakClient: {client}")
 
         try:
-            if platform.system() == "Darwin":
-                await self.bleak_client.connect()
-                _LOGGER.info(f"Connection Complete!")
-                _LOGGER.info("Running on macOS, reading char to initiate pair")
-                await self.bleak_client.read_gatt_char(READ_NOTIFY_CONTROL_HANDLE)
-
-            else:
-                _LOGGER.info(f"Running on Linux, Initiating Pairing with client {self.bleak_client}")
-
-                # if not self.bleak_client.is_connected:
-                #     _LOGGER.info(f"BleakClient not connected, connecting now")
-                #     await self.bleak_client.connect()
-
-                await self.bleak_client.pair()
-                _LOGGER.info("Pairing Complete")
+            # if platform.system() == "Darwin":
+            #     await self.bleak_client.connect()
+            #     _LOGGER.info(f"Connection Complete!")
+            #     _LOGGER.info("Running on macOS, reading char to initiate pair")
+            #     await self.bleak_client.read_gatt_char(READ_NOTIFY_CONTROL_HANDLE)
+            #
+            # else:
+            #     _LOGGER.info(f"Running on Linux, Initiating Pairing with client {self.bleak_client}")
+            #
+            #     # if not self.bleak_client.is_connected:
+            #     #     _LOGGER.info(f"BleakClient not connected, connecting now")
+            #     #     await self.bleak_client.connect()
+            #
+            #     await self.bleak_client.pair()
+            #     _LOGGER.info("Pairing Complete")
 
 
             self.service_collection = self.bleak_client.services

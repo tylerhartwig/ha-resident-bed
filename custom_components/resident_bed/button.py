@@ -1,6 +1,6 @@
 import binascii
 import logging
-from sys import platform
+import platform
 
 from bleak import BleakClient
 from homeassistant.components.button import ButtonDeviceClass, ButtonEntity
@@ -64,9 +64,28 @@ class ResidentBedButton(ResidentBedEntity):
             client = BleakClient(ble_device, disconnected_callback=on_disconnect, timeout=30)
             _LOGGER.info(f"Created BleakClient: {client}")
 
+            try:
+                if platform.system() == "Darwin":
+                    await self.bleak_client.connect()
+                    _LOGGER.info(f"Connection Complete!")
+                    _LOGGER.info("Running on macOS, reading char to initiate pair")
+                    await self.bleak_client.read_gatt_char(READ_NOTIFY_CONTROL_HANDLE)
 
-            bed = ResidentBed(client)
-            _LOGGER.info(f"Bed device is: {bed}")
+                else:
+                    _LOGGER.info(f"Running on Linux, Initiating Pairing with client {self.bleak_client}")
+
+                    await self.bleak_client.pair()
+                    _LOGGER.info("Pairing Complete")
+                    # if not self.bleak_client.is_connected:
+                    #     _LOGGER.info(f"BleakClient not connected, connecting now")
+                    #     await self.bleak_client.connect()
+
+
+            except Exception as e:
+                _LOGGER.error(f"Failed to connect with exception {e}")
+
+            bed = ResidentBed(lambda: bluetooth.async_ble_device_from_address(self.hass, self.mac, connectable=True))
+            _LOGGER.info(f"Created new bed device, mac {self.mac}, setting up now")
 
             if await bed.async_setup():
                 self.hass.data[DOMAIN][self.mac] = bed
