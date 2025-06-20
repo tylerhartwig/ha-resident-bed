@@ -19,54 +19,23 @@ class ResidentBed:
 
 
     async def async_setup(self):
-        _LOGGER.info("Connecting to Resident Bed")
-        # try:
-        # except Exception as e:
-        #     _LOGGER.error(f"Failed to connect to Resident Bed with exception {e}")
-        #     return False
 
-        # _LOGGER.info(f"BLE Device is: {ble_device}")
-        # client = BleakClient(ble_device, disconnected_callback=on_disconnect, timeout=30)
-        # _LOGGER.info(f"Created BleakClient: {client}")
+        self.service_collection = self.bleak_client.services
+        characteristics = self.service_collection.characteristics
+        _LOGGER.debug(f"Service collection: {self.service_collection}")
+        _LOGGER.debug(f"characteristics: {characteristics}")
 
-        try:
-            # if platform.system() == "Darwin":
-            #     await self.bleak_client.connect()
-            #     _LOGGER.info(f"Connection Complete!")
-            #     _LOGGER.info("Running on macOS, reading char to initiate pair")
-            #     await self.bleak_client.read_gatt_char(READ_NOTIFY_CONTROL_HANDLE)
-            #
-            # else:
-            #     _LOGGER.info(f"Running on Linux, Initiating Pairing with client {self.bleak_client}")
-            #
-            #     # if not self.bleak_client.is_connected:
-            #     #     _LOGGER.info(f"BleakClient not connected, connecting now")
-            #     #     await self.bleak_client.connect()
-            #
-            #     await self.bleak_client.pair()
-            #     _LOGGER.info("Pairing Complete")
+        for key, characteristic in characteristics.items():
+            _LOGGER.debug(f"Characteristic: {key}, {characteristics}")
+            if "62741525-52f9-8864-b1ab-3b3a8d65950b" == characteristic.uuid and 'write' in characteristic.properties:
+                _LOGGER.debug(f"Write Characteristic UUID: {characteristic.uuid}")
+                self.control_char = characteristic
+
+            if "62741525-52f9-8864-b1ab-3b3a8d65950b" == characteristic.uuid and 'notify' in characteristic.properties:
+                _LOGGER.debug(f"Notify Characteristic UUID: {characteristic.uuid}")
+                self.notification_char = characteristic
 
 
-            self.service_collection = self.bleak_client.services
-            characteristics = self.service_collection.characteristics
-            _LOGGER.info(f"Service collection: {self.service_collection}")
-            _LOGGER.info(f"characteristics: {characteristics}")
-
-            for key, characteristic in characteristics.items():
-                _LOGGER.info(f"Characteristic: {key}, {characteristics}")
-                if "62741525-52f9-8864-b1ab-3b3a8d65950b" == characteristic.uuid and 'write' in characteristic.properties:
-                    _LOGGER.info(f"Write Characteristic UUID: {characteristic.uuid}")
-                    self.control_char = characteristic
-
-                if "62741525-52f9-8864-b1ab-3b3a8d65950b" == characteristic.uuid and 'notify' in characteristic.properties:
-                    _LOGGER.info(f"Notify Characteristic UUID: {characteristic.uuid}")
-                    self.notification_char = characteristic
-
-            return True
-
-        except Exception as e:
-            _LOGGER.error(f"Failed to connect with exception {e}")
-            return False
 
     async def send_command(self, command: BedCommand):
         if self.bleak_client.is_connected:

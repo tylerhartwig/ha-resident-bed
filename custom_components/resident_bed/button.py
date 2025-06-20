@@ -60,8 +60,9 @@ class ResidentBedButton(ResidentBedEntity):
             _LOGGER.info(f"No Bed device found for mac {self.mac}, setting up")
             ble_device = bluetooth.async_ble_device_from_address(self.hass, self.mac, connectable=True)
 
-            _LOGGER.info(f"BLE Device is: {ble_device}")
+            _LOGGER.debug(f"BLE Device is: {ble_device}")
             client = BleakClient(ble_device, disconnected_callback=on_disconnect, timeout=30)
+
             if not client.is_connected:
                 _LOGGER.info(f"Client not connected, connecting")
                 await client.connect()
@@ -69,10 +70,8 @@ class ResidentBedButton(ResidentBedEntity):
 
             try:
                 if platform.system() == "Darwin":
-                    await self.bleak_client.connect()
-                    _LOGGER.info(f"Connection Complete!")
                     _LOGGER.info("Running on macOS, reading char to initiate pair")
-                    await self.bleak_client.read_gatt_char(READ_NOTIFY_CONTROL_HANDLE)
+                    await client.read_gatt_char(READ_NOTIFY_CONTROL_HANDLE)
 
                 else:
                     _LOGGER.info(f"Running on Linux, Initiating Pairing with client")
@@ -84,17 +83,18 @@ class ResidentBedButton(ResidentBedEntity):
                     #     await self.bleak_client.connect()
 
 
+                bed = ResidentBed(client)
+
+                _LOGGER.info(f"Created new bed device, mac {self.mac}, setting up now")
+
+                if await bed.async_setup():
+                    self.hass.data[DOMAIN][self.mac] = bed
+
             except Exception as e:
                 _LOGGER.error(f"Failed to connect with exception {e}")
 
-            bed = ResidentBed(client)
-            _LOGGER.info(f"Created new bed device, mac {self.mac}, setting up now")
-
-            if await bed.async_setup():
-                self.hass.data[DOMAIN][self.mac] = bed
-
         else:
-            _LOGGER.info(f"Bed device found for mac {self.mac}, using cached bed")
+            _LOGGER.debug(f"Bed device found for mac {self.mac}, using cached bed")
 
         return bed
 
