@@ -62,6 +62,9 @@ class ResidentBedButton(ResidentBedEntity):
 
             _LOGGER.info(f"BLE Device is: {ble_device}")
             client = BleakClient(ble_device, disconnected_callback=on_disconnect, timeout=30)
+            if not client.is_connected:
+                _LOGGER.info(f"Client not connected, connecting")
+                await client.connect()
             # _LOGGER.info(f"Created BleakClient: {client}")
 
             try:
@@ -84,7 +87,7 @@ class ResidentBedButton(ResidentBedEntity):
             except Exception as e:
                 _LOGGER.error(f"Failed to connect with exception {e}")
 
-            bed = ResidentBed(lambda: bluetooth.async_ble_device_from_address(self.hass, self.mac, connectable=True))
+            bed = ResidentBed(client)
             _LOGGER.info(f"Created new bed device, mac {self.mac}, setting up now")
 
             if await bed.async_setup():

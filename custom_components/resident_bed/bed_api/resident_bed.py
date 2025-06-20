@@ -11,12 +11,11 @@ _LOGGER = logging.getLogger(__name__)
 
 class ResidentBed:
 
-    def __init__(self, get_ble_device):
+    def __init__(self, bleak_client):
         self.control_char = None
         self.notification_char = None
         self.service_collection = None
-        self.bleak_client = None
-        self.get_ble_device = get_ble_device
+        self.bleak_client = bleak_client
 
 
     async def async_setup(self):
@@ -26,9 +25,9 @@ class ResidentBed:
         #     _LOGGER.error(f"Failed to connect to Resident Bed with exception {e}")
         #     return False
 
-        _LOGGER.info(f"BLE Device is: {ble_device}")
-        client = BleakClient(ble_device, disconnected_callback=on_disconnect, timeout=30)
-        _LOGGER.info(f"Created BleakClient: {client}")
+        # _LOGGER.info(f"BLE Device is: {ble_device}")
+        # client = BleakClient(ble_device, disconnected_callback=on_disconnect, timeout=30)
+        # _LOGGER.info(f"Created BleakClient: {client}")
 
         try:
             # if platform.system() == "Darwin":
