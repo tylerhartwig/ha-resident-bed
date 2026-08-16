@@ -310,6 +310,32 @@ can actually change, so extra library-level attempts against the same route buy
 little and cost the budget. Log every round outcome, including timeouts; a
 silent wait is the worst failure mode for a button.
 
+### Reference latencies (measured on a healthy route)
+
+Use these to judge whether a setup is actually unhealthy before changing tuning.
+Measured end-to-end as `button.press` service round-trip, on a pinned proxy with
+a bonded base:
+
+| Scenario | Round-trip | Connect portion |
+|---|---|---|
+| Warm (link still open, within keepalive) | ~0.5s | none |
+| Cold (after idle disconnect) | ~0.8-1.0s | ~0.6s |
+| Cold, with `pair` enabled | ~21s | pairing adds ~7s |
+| First connect after a Home Assistant restart | ~14-21s | one-off; settles after |
+
+Two things follow:
+
+1. **A cold connect costs about a second**, which is why `always_connected`
+   defaults off. Holding links open buys ~0.5s and costs a connection slot plus,
+   on a busy proxy, sustained churn.
+2. **Leave `pair` off once a base is bonded.** It adds ~7s to every connect and
+   the bond already persists. It is a recovery action: enable it, power-cycle the
+   bed, press a button, then turn it off again. A future improvement would be to
+   have the option clear itself after a successful pairing.
+
+The first connect after a restart is slow and then settles — do not tune based
+on that sample.
+
 ### Pairing is best effort, never fatal
 
 Bonds persist on the adapter, so a base pairs once and every later connection
