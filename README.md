@@ -36,17 +36,20 @@ light to go out, plug it back in, and continue once the light turns blue.
 
 Settings → Devices & Services → Resident Bed → **Configure**:
 
-- **Keep the connection open** (default on) — holds the Bluetooth link so button
-  presses are immediate instead of waiting to connect. Costs one connection slot
-  on the adapter or proxy serving the bed (ESPHome proxies have 3 by default).
-  Turn it off if slots are scarce.
+- **Keep the connection open** (default off) — holds the Bluetooth link so
+  presses are immediate instead of waiting to connect. Costs a connection slot
+  on the adapter or proxy serving the bed (ESPHome proxies have 3 by default),
+  and on a busy proxy that can cause repeated disconnects. Off by default
+  because an on-demand reconnect is typically only a second or two.
 - **Idle timeout** (default 90s) — when the above is off, how long to hold the
   connection after a press before dropping it.
-- **Pair with the bed** (default off) — re-pair on the next connection. These
-  bases generally only accept a new pairing for about 60 seconds after a fresh
-  power-on, so unplug the bed, plug it back in, and enable this promptly. Only
-  needed if the bed stopped accepting commands, or the adapter it paired with
-  was replaced or reflashed.
+- **Pair with the bed** (default off) — attempt pairing on each connection.
+  Bonds persist on the adapter, so this is normally needed only once. These
+  bases generally accept a new bond only for about 60 seconds after a fresh
+  power-on, so unplug the bed, plug it back in, then press a button. A failed
+  pairing attempt is ignored rather than failing the connection. Needed if the
+  bed stops accepting commands, or the adapter it paired with was replaced,
+  reflashed, or restarted.
 - **Bluetooth adapter or proxy** (default automatic) — automatic keeps using
   whichever adapter last connected successfully, falling back to the strongest
   signal if that one cannot see the bed. Pin a specific one to override.

@@ -28,7 +28,11 @@ CONF_LAST_GOOD_SOURCE: Final = "last_good_source"
 # Holding the link open removes connect latency from the first press, at the
 # cost of one connection slot on the adapter or proxy serving the bed. Users
 # with a single proxy and many BLE devices may prefer to turn this off.
-DEFAULT_ALWAYS_CONNECTED: Final = True
+# Off by default. Holding links open kept two connection slots busy on one
+# proxy and produced sustained connect/disconnect churn, while an on-demand
+# reconnect measured ~2s on a healthy route -- fast enough that the cost of
+# holding the link is not worth it.
+DEFAULT_ALWAYS_CONNECTED: Final = False
 
 # Seconds to hold an idle connection open when always-connected is off.
 DEFAULT_KEEPALIVE: Final = 90

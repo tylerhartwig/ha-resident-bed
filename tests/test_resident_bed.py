@@ -60,12 +60,19 @@ class FakeServices:
 
 
 class FakeClient:
-    def __init__(self, has_control=True, write_error=None):
+    def __init__(self, has_control=True, write_error=None, pair_error=None):
         self.is_connected = True
         self.services = FakeServices(has_control)
         self.writes = []
         self.disconnected = False
+        self.pair_calls = 0
         self._write_error = write_error
+        self._pair_error = pair_error
+
+    async def pair(self):
+        self.pair_calls += 1
+        if self._pair_error is not None:
+            raise self._pair_error
 
     async def write_gatt_char(self, characteristic, payload, response=True):
         if self._write_error is not None:
@@ -428,19 +435,68 @@ async def test_route_change_is_reported_once_for_persistence(connect_recorder):
     assert changes == ["routeA"], "should report only on change, not every connect"
 
 
-async def test_pair_flag_is_passed_to_establish_connection(monkeypatch):
-    seen = {}
-
-    async def fake_establish(client_class, device, name, **kwargs):
-        seen.update(kwargs)
-        client = FakeClient()
-        client._disconnect_cb = kwargs.get("disconnected_callback")
-        return client
-
-    monkeypatch.setattr(module, "establish_connection", fake_establish)
+async def test_pairing_is_attempted_after_connect_when_enabled(connect_recorder):
     bed = ResidentBed(
         ADDRESS, "Test", lambda: make_device("r"), pair=True, always_connected=False
     )
     await bed.async_connect()
 
-    assert seen["pair"] is True
+    assert connect_recorder["clients"][0].pair_calls == 1
+
+
+async def test_pairing_is_skipped_when_disabled(connect_recorder):
+    bed = ResidentBed(
+        ADDRESS, "Test", lambda: make_device("r"), pair=False, always_connected=False
+    )
+    await bed.async_connect()
+
+    assert connect_recorder["clients"][0].pair_calls == 0
+
+
+async def test_pairing_failure_does_not_fail_the_connection(connect_recorder):
+    """Bonds persist, so re-pairing is usually refused. That must not matter.
+
+    These bases only accept a new bond briefly after power-on; treating a
+    refusal as fatal would break a link that is otherwise perfectly usable.
+    """
+    client = FakeClient(pair_error=BleakError("Pairing failed due to error: 2"))
+    connect_recorder["behaviour"] = lambda route, attempt: client
+
+    bed = ResidentBed(
+        ADDRESS, "Test", lambda: make_device("r"), pair=True, always_connected=False
+    )
+    await bed.async_connect()
+
+    assert bed.is_connected
+    assert client.pair_calls == 1
+
+    # And commands still go through on that connection.
+    await bed.async_send_command(BedCommand.TV)
+    assert len(client.writes) == 1
+
+
+async def test_unsupported_pairing_firmware_is_tolerated(connect_recorder):
+    """Older proxy firmware raises NotImplementedError rather than BleakError."""
+    client = FakeClient(pair_error=NotImplementedError("no PAIRING feature flag"))
+    connect_recorder["behaviour"] = lambda route, attempt: client
+
+    bed = ResidentBed(
+        ADDRESS, "Test", lambda: make_device("r"), pair=True, always_connected=False
+    )
+    await bed.async_connect()
+
+    assert bed.is_connected
+
+
+async def test_round_budget_fits_inside_the_total_budget():
+    """Rounds must actually get to run.
+
+    With a per-attempt timeout of 20s and 2 attempts per round, round 1 alone
+    exhausted a 45s ceiling and later rounds never executed.
+    """
+    worst_case = module.CONNECT_ROUNDS * module.CONNECT_ROUND_TIMEOUT
+    assert module.ATTEMPTS_PER_ROUND == 1, "round-level retry is where routes change"
+    assert worst_case <= module.CONNECT_TOTAL_TIMEOUT, (
+        f"{module.CONNECT_ROUNDS} rounds x {module.CONNECT_ROUND_TIMEOUT}s "
+        f"exceeds the {module.CONNECT_TOTAL_TIMEOUT}s ceiling"
+    )

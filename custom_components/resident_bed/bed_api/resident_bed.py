@@ -60,12 +60,20 @@ RECONNECT_MIN_DELAY = 5.0
 RECONNECT_MAX_DELAY = 300.0
 
 # Connection rounds. Each round re-resolves the BLEDevice, so each one may take
-# a different route to the bed; the library retries within a round.
-CONNECT_ROUNDS = 3
-ATTEMPTS_PER_ROUND = 2
+# a different route to the bed.
+#
+# The arithmetic here has to hold together: bleak-retry-connector uses a 20s
+# per-attempt timeout, so N attempts per round can want N*20s. With 2 attempts
+# and a 45s overall ceiling, round 1 alone consumed the whole budget and rounds
+# 2 and 3 never ran -- the ceiling silently defeated the retry design. Keep one
+# attempt per round (we retry at the round level, where the route can actually
+# change) and give each round its own timeout that fits inside the total.
+CONNECT_ROUNDS = 2
+ATTEMPTS_PER_ROUND = 1
+CONNECT_ROUND_TIMEOUT = 22.0
 
 # Hard ceiling so a button press can never hang indefinitely.
-CONNECT_TOTAL_TIMEOUT = 45.0
+CONNECT_TOTAL_TIMEOUT = 50.0
 
 
 class ResidentBedError(Exception):
@@ -175,6 +183,7 @@ class ResidentBed:
                 client = await self._connect_rounds()
         except TimeoutError as err:
             self.last_error = f"connect timed out after {CONNECT_TOTAL_TIMEOUT:.0f}s"
+            _LOGGER.debug("%s: %s", self.name, self.last_error)
             raise ResidentBedError(f"{self.name}: {self.last_error}") from err
 
         self._client = client
@@ -233,25 +242,32 @@ class ResidentBed:
                 _LOGGER.debug("%s: stale-connection cleanup skipped: %s", self.name, err)
 
             try:
-                client = await establish_connection(
-                    BleakClientWithServiceCache,
-                    device,
-                    self.name,
-                    disconnected_callback=self._on_disconnect,
-                    max_attempts=ATTEMPTS_PER_ROUND,
-                    use_services_cache=True,
-                    pair=self._pair,
-                )
+                async with asyncio.timeout(CONNECT_ROUND_TIMEOUT):
+                    client = await establish_connection(
+                        BleakClientWithServiceCache,
+                        device,
+                        self.name,
+                        disconnected_callback=self._on_disconnect,
+                        max_attempts=ATTEMPTS_PER_ROUND,
+                        use_services_cache=True,
+                        # Pairing is attempted separately below so that a
+                        # pairing failure cannot fail an otherwise good link.
+                        pair=False,
+                    )
             except (BleakError, TimeoutError, OSError) as err:
                 last_error = err
                 self.last_error = str(err)
                 _LOGGER.debug(
-                    "%s: round %s via %s failed: %s",
-                    self.name, round_number, route, err,
+                    "%s: round %s/%s via %s failed after %.0fs budget: %s",
+                    self.name, round_number, CONNECT_ROUNDS, route,
+                    CONNECT_ROUND_TIMEOUT, err,
                 )
                 # Give the next round a chance to see a fresher/nearer route.
                 await asyncio.sleep(0.5)
                 continue
+
+            if self._pair:
+                await self._try_pair(client)
 
             self.last_route = route
             if route != self._last_good_route:
@@ -266,6 +282,30 @@ class ResidentBed:
             f"Failed to connect to {self.name} after {CONNECT_ROUNDS} rounds: "
             f"{last_error}"
         ) from last_error
+
+    async def _try_pair(self, client: BleakClient) -> None:
+        """Attempt to bond, but never fail the connection over it.
+
+        Bonds persist on the adapter, so once a base is paired every later
+        connection works without pairing again. Re-pairing an already-bonded
+        base is usually a no-op and is frequently refused outright -- these
+        bases only accept a new bond for a short window after power-on. Letting
+        that refusal fail the connection would break a link that works fine.
+        """
+        try:
+            await client.pair()
+            _LOGGER.info("%s: paired", self.name)
+        except NotImplementedError:
+            _LOGGER.warning(
+                "%s: this adapter's firmware does not support pairing; "
+                "if the bed refuses commands, pair it via a different adapter",
+                self.name,
+            )
+        except Exception as err:  # noqa: BLE001 - pairing is best effort
+            _LOGGER.debug(
+                "%s: pairing not completed (%s); continuing with the existing "
+                "bond", self.name, err,
+            )
 
     def _device_for_round(self, round_number: int) -> BLEDevice | None:
         """Choose which route to attempt this round.

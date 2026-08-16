@@ -292,6 +292,39 @@ python3 tools/ha_api.py service logger/set_level \
 python3 tools/ha_logs.py --filter <bed-address> --follow
 ```
 
+### Timeouts must fit the retry design
+
+`bleak-retry-connector` uses a 20s per-attempt timeout. An earlier version ran
+2 attempts per round under a single 45s overall ceiling, so **round 1 alone
+consumed the whole budget and rounds 2 and 3 never executed** — the ceiling
+silently defeated the retry design, and because the outer timeout fired rather
+than `establish_connection` raising, nothing was logged. Observed live: a press
+produced 45 seconds of complete silence, then a failure.
+
+The invariant, asserted in `tests/`:
+
+    CONNECT_ROUNDS * CONNECT_ROUND_TIMEOUT <= CONNECT_TOTAL_TIMEOUT
+
+with one attempt per round — round-level retry is the level at which the route
+can actually change, so extra library-level attempts against the same route buy
+little and cost the budget. Log every round outcome, including timeouts; a
+silent wait is the worst failure mode for a button.
+
+### Pairing is best effort, never fatal
+
+Bonds persist on the adapter, so a base pairs once and every later connection
+works without pairing. Re-pairing an already-bonded base is commonly refused
+outright, and these bases only accept a new bond for roughly 60 seconds after a
+power-on. `_try_pair()` therefore attempts pairing when enabled and swallows
+failures — including `NotImplementedError`, which older proxy firmware raises
+when it lacks the `PAIRING` feature flag. The pre-rewrite code did the same
+("Pairing failed, moving on") and worked. Letting a pairing refusal fail the
+connection breaks links that are otherwise fine.
+
+Observed live: one bed needed a power-cycle and re-pair after its proxy
+restarted; the other reconnected with its existing bond and never paired again.
+Both are normal.
+
 ### A trap: `ble_device_callback` is a no-op
 
 `establish_connection()` accepts a `ble_device_callback` parameter, and its name
