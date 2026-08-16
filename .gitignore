@@ -1,1 +1,88 @@
+# ---------------------------------------------------------------------------
+# SECRETS -- CRITICAL. Nothing in this block may ever reach the remote.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+secrets.yaml
+secrets.json
+*.token
+*token.txt
+.ha_token
+.gemini/settings.json
+.claude/settings.local.json
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+.netrc
+
+# Ad-hoc debugging scripts tend to grow hardcoded tokens. Keep them local.
+scratch/
+sandbox/
+fetch_*.py
+reload_ha.py
+set_*.py
+turn_on_*.py
+
+# ---------------------------------------------------------------------------
+# Captured Home Assistant / BLE diagnostic output (may contain MACs, tokens,
+# entity data, and household details).
+# ---------------------------------------------------------------------------
+logs/
+*.log
+*.log.*
+diagnostics/
+*.diagnostic.json
+captures/
+*.pcap
+*.pcapng
+*.btsnoop
+gatt_dump*.json
+home-assistant.log*
+config/
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+venv/
+.venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# ---------------------------------------------------------------------------
+# Editors / OS
+# ---------------------------------------------------------------------------
 **/.idea
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+.AppleDouble
+Thumbs.db
+
+# ---------------------------------------------------------------------------
+# Agent tooling scratch
+# ---------------------------------------------------------------------------
+.antigravitycli/
+.aider*

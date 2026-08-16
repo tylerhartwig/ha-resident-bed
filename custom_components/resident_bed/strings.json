@@ -1,59 +1,95 @@
 {
   "config": {
-    "title": "Resident Bed Setup",
+    "flow_title": "{name}",
     "step": {
-      "info": {
+      "user": {
+        "title": "Resident Bed",
+        "description": "Select the bed base to add.",
         "data": {
-          "name": "Name"
-        },
-        "data_description": {
-          "name": "This name will be used to represent your bed in Home Assistant"
+          "address": "Bed"
         }
       },
-      "setup_pair": {
-        "description": "Please unplug your bed, wait for the light to turn off, then plug back in, once the light turns blue, click next"
+      "configure": {
+        "title": "Name this bed",
+        "description": "Setting up the bed at {address}. This name is used for the device and its buttons in Home Assistant.",
+        "data": {
+          "name": "Name"
+        }
       },
-      "connect": {
-        "description": "Connecting..."
+      "pair": {
+        "title": "Could not reach the bed",
+        "description": "Home Assistant could not connect to the bed.\n\nError: {error}\n\nThese bases usually only accept a new pairing for a short window (around 60 seconds) after a fresh power-on. Unplug the bed, wait for the light to turn off, then plug it back in. Once the light turns blue, select **Submit** promptly — the next attempt will also try to pair.\n\nThe pairing is stored on whichever Bluetooth adapter or proxy completes it, so this bed will keep using that one afterwards."
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the bed."
+    },
+    "abort": {
+      "already_configured": "This bed is already set up.",
+      "no_devices_found": "No unconfigured bed bases are currently visible over Bluetooth. Make sure the bed is powered on and within range of a Bluetooth adapter or proxy, then try again."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Connection behaviour",
+        "description": "Holding the Bluetooth connection open makes the first button press instant, but uses one connection slot on the adapter or Bluetooth proxy serving this bed. Turn it off if you are short on slots; presses will then connect on demand and the first one after an idle period will be slower.",
+        "data": {
+          "always_connected": "Keep the connection open",
+          "keepalive": "Idle timeout (seconds)",
+          "pair": "Pair with the bed",
+          "preferred_source": "Bluetooth adapter or proxy"
+        },
+        "data_description": {
+          "keepalive": "How long to hold the connection after a button press when 'Keep the connection open' is off. Only used in that mode.",
+          "pair": "Re-pair on the next connection. Only needed if the bed stopped accepting commands, or if the adapter or proxy it was paired with was replaced or reflashed. Pairing generally only succeeds within about 60 seconds of powering the bed on.",
+          "preferred_source": "Which adapter or proxy to connect through. Automatic keeps using whichever one last connected successfully, which is what a paired bed needs, and falls back to the strongest signal if that one cannot see the bed. Pin a specific one to override that."
+        }
       }
     }
   },
   "entity": {
     "button": {
-      "LED_button": {
+      "led": {
         "name": "LED"
       },
-      "Flat_button": {
+      "flat": {
         "name": "Flat"
       },
-      "ZeroGravity_button": {
+      "zerogravity": {
         "name": "Zero Gravity"
       },
-      "Reading_button": {
+      "reading": {
         "name": "Reading"
       },
-      "TV_button": {
+      "tv": {
         "name": "TV"
       },
-      "Sleeping_button": {
+      "sleeping": {
         "name": "Sleeping"
       },
-      "HeadUp_button": {
+      "headfeetup": {
+        "name": "Head & Feet Up"
+      },
+      "headfeetdown": {
+        "name": "Head & Feet Down"
+      },
+      "headup": {
         "name": "Head Up"
       },
-      "HeadDown_button": {
+      "headdown": {
         "name": "Head Down"
       },
-      "FeetUp_button": {
+      "feetup": {
         "name": "Feet Up"
       },
-      "FeetDown_button": {
+      "feetdown": {
         "name": "Feet Down"
       },
-      "M1_button": {
+      "m1": {
         "name": "M1"
       },
-      "M2_button": {
+      "m2": {
         "name": "M2"
       }
     }

@@ -1,0 +1,18 @@
+# Lint config for local development. Home Assistant lints custom integrations
+# with its own config; this exists so `ruff check` here is signal, not noise.
+
+target-version = "py312"
+line-length = 88
+
+[lint]
+select = ["F", "E", "W", "B", "ASYNC", "SIM", "UP", "RUF", "BLE001", "E402"]
+ignore = [
+    "E501",  # long lines are handled by the formatter, not enforced here
+]
+
+[lint.per-file-ignores]
+# tools/ are standalone scripts that must run on macOS system python3 (3.9).
+# They use %-formatting deliberately and are not part of the integration.
+"tools/*" = ["UP031", "UP015"]
+# Tests reach into internals to drive the state machine.
+"tests/*" = ["SLF001"]
