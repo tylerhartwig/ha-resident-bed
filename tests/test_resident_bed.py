@@ -21,12 +21,42 @@ def make_device(route):
     return BLEDevice(ADDRESS, "TEST-BASE", {"source": route})
 
 
+class FakeChar:
+    def __init__(self, uuid, handle, properties):
+        self.uuid = uuid
+        self.handle = handle
+        self.properties = properties
+
+
+class FakeService:
+    def __init__(self, characteristics):
+        self.characteristics = characteristics
+
+
 class FakeServices:
+    """Mimics a base exposing the control UUID twice: notify, then write.
+
+    Ordering matters -- the notify one comes first, so a plain UUID lookup
+    would pick the characteristic that silently ignores writes.
+    """
+
     def __init__(self, has_control=True):
-        self._has_control = has_control
+        chars = []
+        if has_control:
+            chars = [
+                FakeChar(CONTROL_UUID, 15, ["notify"]),
+                FakeChar(CONTROL_UUID, 19, ["write", "notify"]),
+            ]
+        self._service = FakeService(chars)
+
+    def __iter__(self):
+        return iter([self._service])
 
     def get_characteristic(self, uuid):
-        return object() if (self._has_control and uuid == CONTROL_UUID) else None
+        for char in self._service.characteristics:
+            if char.uuid == uuid:
+                return char
+        return None
 
 
 class FakeClient:
@@ -37,11 +67,11 @@ class FakeClient:
         self.disconnected = False
         self._write_error = write_error
 
-    async def write_gatt_char(self, uuid, payload, response=True):
+    async def write_gatt_char(self, characteristic, payload, response=True):
         if self._write_error is not None:
             err, self._write_error = self._write_error, None
             raise err
-        self.writes.append((uuid, payload, response))
+        self.writes.append((characteristic, payload, response))
 
     async def disconnect(self):
         self.disconnected = True
@@ -128,11 +158,24 @@ async def test_not_visible_raises_not_found(connect_recorder):
     assert connect_recorder["routes"] == []
 
 
+async def test_write_targets_the_writable_characteristic(connect_recorder):
+    """Two characteristics share the control UUID; only one accepts writes.
+
+    Writing to the notify-only one is accepted by the transport and silently
+    does nothing, which looks like the bed ignoring commands.
+    """
+    bed = ResidentBed(ADDRESS, "Test", lambda: make_device("r"), always_connected=False)
+    await bed.async_send_command(BedCommand.LED)
+
+    characteristic = connect_recorder["clients"][0].writes[0][0]
+    assert characteristic.handle == 19, "must not pick the notify-only handle 15"
+
+
 async def test_missing_control_characteristic_is_rejected(connect_recorder):
     connect_recorder["behaviour"] = lambda route, attempt: FakeClient(has_control=False)
     bed = ResidentBed(ADDRESS, "Test", lambda: make_device("r"), always_connected=False)
 
-    with pytest.raises(ResidentBedError, match="control characteristic"):
+    with pytest.raises(ResidentBedError, match="no writable characteristic"):
         await bed.async_connect()
 
     assert not bed.is_connected
@@ -147,7 +190,12 @@ async def test_send_command_writes_payload(connect_recorder):
     await bed.async_send_command(BedCommand.TV)
 
     client = connect_recorder["clients"][0]
-    assert client.writes == [(CONTROL_UUID, BedCommand.TV.payload, True)]
+    assert len(client.writes) == 1
+    characteristic, payload, response = client.writes[0]
+    assert payload == BedCommand.TV.payload and response is True
+    # Must be the writable one (handle 19), not the notify-only one (handle 15).
+    assert characteristic.handle == 19
+    assert "write" in characteristic.properties
 
 
 async def test_write_failure_reconnects_and_retries_once(connect_recorder):
@@ -162,7 +210,8 @@ async def test_write_failure_reconnects_and_retries_once(connect_recorder):
     await bed.async_send_command(BedCommand.Flat)
 
     assert clients[0].writes == []
-    assert clients[1].writes == [(CONTROL_UUID, BedCommand.Flat.payload, True)]
+    assert len(clients[1].writes) == 1
+    assert clients[1].writes[0][1] == BedCommand.Flat.payload
     assert clients[0].disconnected
 
 

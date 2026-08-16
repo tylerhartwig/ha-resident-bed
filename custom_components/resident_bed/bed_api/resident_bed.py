@@ -104,6 +104,7 @@ class ResidentBed:
         self._on_route_changed = on_route_changed
 
         self._client: BleakClient | None = None
+        self._control_char = None
         self._lock = asyncio.Lock()
         self._disconnect_timer: asyncio.TimerHandle | None = None
         self._disconnect_task: asyncio.Task | None = None
@@ -181,18 +182,26 @@ class ResidentBed:
         self.last_connected_at = time.time()
         self._reconnect_delay = RECONNECT_MIN_DELAY
 
-        # Fail clearly if this isn't the device we think it is, rather than
-        # later with an opaque write error.
-        if client.services.get_characteristic(CONTROL_UUID) is None:
+        # Resolve the *writable* control characteristic explicitly. These bases
+        # expose more than one characteristic under CONTROL_UUID -- a notify one
+        # and a write one -- and bleak's UUID lookup returns whichever comes
+        # first, which may be the notify one. Writes to that are accepted at the
+        # transport level and silently do nothing.
+        self._control_char = _find_writable(client, CONTROL_UUID)
+        if self._control_char is None:
             await self._disconnect_client(client)
             self._client = None
-            self.last_error = "control characteristic missing"
+            self.last_error = "no writable control characteristic"
             raise ResidentBedError(
-                f"{self.name}: control characteristic {CONTROL_UUID} not found; "
+                f"{self.name}: no writable characteristic {CONTROL_UUID} found; "
                 "this may not be an OKIN-compatible base"
             )
 
-        _LOGGER.info("%s: connected via %s", self.name, self.last_route)
+        _LOGGER.info(
+            "%s: connected via %s, control handle=%s props=%s",
+            self.name, self.last_route, self._control_char.handle,
+            ",".join(self._control_char.properties),
+        )
         self._notify_state()
         return client
 
@@ -331,8 +340,13 @@ class ResidentBed:
 
     async def _write_locked(self, command: BedCommand) -> None:
         client = await self._connect_locked()
-        _LOGGER.debug("%s: sending %s (%s)", self.name, command.name, command.value)
-        await client.write_gatt_char(CONTROL_UUID, command.payload, response=True)
+        characteristic = self._control_char
+        _LOGGER.debug(
+            "%s: sending %s (%s) to handle %s",
+            self.name, command.name, command.value,
+            getattr(characteristic, "handle", "?"),
+        )
+        await client.write_gatt_char(characteristic, command.payload, response=True)
 
     # -- teardown ----------------------------------------------------------
 
@@ -351,6 +365,7 @@ class ResidentBed:
 
     async def _drop_client(self) -> None:
         client, self._client = self._client, None
+        self._control_char = None
         if client is not None:
             await self._disconnect_client(client)
 
@@ -431,6 +446,25 @@ class ResidentBed:
             return
         self._reconnect_delay = RECONNECT_MIN_DELAY
         self._schedule_reconnect()
+
+
+def _find_writable(client: BleakClient, uuid: str):
+    """Return the writable characteristic for `uuid`, or None.
+
+    Prefers write-with-response, since that is what these bases acknowledge.
+    Iterates every characteristic rather than using the UUID lookup, because
+    more than one can share a UUID and only some accept writes.
+    """
+    fallback = None
+    for service in client.services:
+        for characteristic in service.characteristics:
+            if characteristic.uuid.lower() != uuid.lower():
+                continue
+            if "write" in characteristic.properties:
+                return characteristic
+            if "write-without-response" in characteristic.properties:
+                fallback = fallback or characteristic
+    return fallback
 
 
 def _route_of(device: BLEDevice) -> str:
