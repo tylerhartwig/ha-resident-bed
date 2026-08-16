@@ -30,18 +30,23 @@ def _entries():
 
 
 def _bed_entries():
-    """Every configured bed, as (title, address, state)."""
+    """Every configured bed, as (title, address, state).
+
+    Addresses come from the device registry over the websocket API: the REST
+    API does not expose config-entry data, and entry titles are user-editable.
+    """
+    import asyncio
+
+    import _ws
+
+    by_entry = asyncio.run(_ws.bed_addresses(DOMAIN))
     beds = []
     for entry in _entries():
         if entry.get("domain") != DOMAIN:
             continue
-        data = entry.get("data") or {}
-        address = data.get("address") or data.get("mac")
-        # Older entries may not expose data over the API; fall back to the
-        # address embedded in the entry title by earlier versions.
-        if not address and entry.get("title", "").count(":") == 5:
-            address = entry["title"].rsplit("-", 1)[-1]
-        beds.append((entry.get("title") or DOMAIN, address, entry.get("state")))
+        name, address = by_entry.get(entry["entry_id"], (None, None))
+        beds.append((entry.get("title") or name or DOMAIN, address,
+                     entry.get("state")))
     return beds
 
 
@@ -94,16 +99,7 @@ def cmd_routes(_args):
     allocations = manager.get("allocations") or {}
     scanners = manager.get("scanners", [])
 
-    last_good_by_address = {}
-    for entry in _entries():
-        if entry.get("domain") == DOMAIN:
-            data = entry.get("data") or {}
-            addr = data.get("address") or data.get("mac")
-            if addr:
-                last_good_by_address[addr] = data.get("last_good_source")
-
     for title, address, state in beds:
-        last_good = last_good_by_address.get(address)
         print("=" * 78)
         print("%s   [%s]" % (title, state))
         if not address:
@@ -128,8 +124,6 @@ def cmd_routes(_args):
             continue
 
         seen.sort(key=lambda row: (row[1] is None, -(row[1] or 0)))
-        if last_good:
-            print("  last good route: %s" % last_good)
         print("  %-44s %-6s %-7s %-11s %s"
               % ("ADAPTER / PROXY", "RSSI", "AGE_s", "SLOTS", "FAILS(this bed)"))
         for index, (scanner, rssi, age) in enumerate(seen):

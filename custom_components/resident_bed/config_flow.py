@@ -252,17 +252,52 @@ class ResidentBedOptionsFlow(OptionsFlow):
         )
 
     def _source_choices(self) -> dict[str, str]:
-        """Adapters and proxies that can currently see this bed, best first.
+        """Every connectable adapter or proxy, annotated with what it hears.
 
-        Built from the live instance, so it reflects whatever hardware is
-        actually present rather than any assumed layout.
+        Deliberately lists *all* connectable scanners, not only those currently
+        seeing this bed. A connected bed stops advertising, so restricting the
+        list to what is visible right now would make it impossible to pin the
+        very adapter the bed is talking to. Built from the live instance, so it
+        reflects whatever hardware is present.
         """
-        address = self.config_entry.data.get(CONF_ADDRESS) or self.config_entry.data.get(
-            "mac"
+        address = self.config_entry.data.get(CONF_ADDRESS) or (
+            self.config_entry.data.get("mac")
         )
-        choices = {AUTOMATIC_SOURCE: "Automatic (strongest signal)"}
-        if not address:
-            return choices
+        choices = {AUTOMATIC_SOURCE: "Automatic (last working, else strongest)"}
+
+        rssi_by_source: dict[str, int] = {}
+        if address:
+            for scanner_device in bluetooth.async_scanner_devices_by_address(
+                self.hass, address, connectable=True
+            ):
+                if scanner_device.advertisement:
+                    rssi_by_source[scanner_device.scanner.source] = (
+                        scanner_device.advertisement.rssi
+                    )
+
+        scanners = [
+            scanner
+            for scanner in bluetooth.async_current_scanners(self.hass)
+            if scanner.connectable
+        ]
+        scanners.sort(
+            key=lambda scanner: rssi_by_source.get(scanner.source, -127),
+            reverse=True,
+        )
+        for scanner in scanners:
+            label = scanner.name or scanner.source
+            rssi = rssi_by_source.get(scanner.source)
+            choices[scanner.source] = (
+                f"{label} ({rssi} dBm)" if rssi is not None
+                else f"{label} (not hearing this bed right now)"
+            )
+
+        # Never drop a previously chosen source, even if it has gone away.
+        current = self.config_entry.options.get(CONF_PREFERRED_SOURCE)
+        if current and current not in choices:
+            choices[current] = f"{current} (unavailable)"
+
+        return choices
 
         devices = list(
             bluetooth.async_scanner_devices_by_address(
