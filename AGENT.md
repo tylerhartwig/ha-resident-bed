@@ -114,12 +114,33 @@ Integration work — the slow loop, because HACS is the only delivery path:
 
 ```bash
 git commit -am "..." && git push
-# HACS UI -> Resident Bed -> Redownload
+.venv/bin/python tools/hacs_deploy.py refresh   # force HACS to re-read the repo
+.venv/bin/python tools/hacs_deploy.py install
 python3 tools/ha_api.py restart                     # ask the user first
 python3 tools/ha_api.py entities                    # confirm entities came back
 python3 tools/ha_api.py press button.<...>          # exercise it
 python3 tools/ha_logs.py --follow                   # watch what happened
 ```
+
+**HACS may not notice pushes on its own.** `startup_tasks` aborts on the first
+exception, and everything after the failure point is skipped — including
+`set_stage(HacsStage.RUNNING)` and the initial repository refresh. On this
+install it was aborting with `ValueError: The repo id for <repo> is already set
+to <id>` (a duplicate repository ID in HACS's stored data, unrelated to this
+integration), leaving HACS stuck in the `startup` stage and silently not
+detecting updates for *any* repository. Check with:
+
+```bash
+.venv/bin/python tools/hacs_deploy.py status    # want stage: running
+```
+
+`tools/hacs_deploy.py` drives the same websocket commands the HACS frontend
+uses (`hacs/repository/refresh`, `hacs/repository/download`), so it works even
+when the update entity is stale. It is a workaround, not a fix — the duplicate
+repository ID still needs clearing in the HACS UI.
+
+Custom-integration code changes require a **full Home Assistant restart**;
+reloading the config entry re-runs setup against already-imported modules.
 
 **This repo has no git releases, so HACS tracks the default branch by commit
 SHA** — `update.resident_bed_update` currently reports `installed_version` as a
