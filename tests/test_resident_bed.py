@@ -502,13 +502,14 @@ async def test_round_budget_fits_inside_the_total_budget():
     )
 
 
-async def test_pairing_defaults_on_in_const():
+def test_pairing_defaults_on_in_const():
+    """Regression guard: shipping this off makes every button silently no-op."""
     import importlib.util
-    import pathlib
+    import os
 
-    const_path = (
-        pathlib.Path(__file__).resolve().parents[1]
-        / "custom_components" / "resident_bed" / "const.py"
+    const_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "custom_components", "resident_bed", "const.py",
     )
     spec = importlib.util.spec_from_file_location("_rb_const", const_path)
     const = importlib.util.module_from_spec(spec)
