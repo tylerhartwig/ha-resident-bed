@@ -43,13 +43,12 @@ Settings → Devices & Services → Resident Bed → **Configure**:
   because an on-demand reconnect is typically only a second or two.
 - **Idle timeout** (default 90s) — when the above is off, how long to hold the
   connection after a press before dropping it.
-- **Pair with the bed** (default off) — attempt pairing on each connection.
-  Bonds persist on the adapter, so this is normally needed only once. These
-  bases generally accept a new bond only for about 60 seconds after a fresh
-  power-on, so unplug the bed, plug it back in, then press a button. A failed
-  pairing attempt is ignored rather than failing the connection. Needed if the
-  bed stops accepting commands, or the adapter it paired with was replaced,
-  reflashed, or restarted.
+- **Pair with the bed** (default on) — pairs on each connection. **Leave this
+  on.** These bases acknowledge writes on an unpaired link but do not act on
+  them, so turning it off makes the buttons silently do nothing. If pairing has
+  never been completed, unplug the bed, plug it back in, and press a button
+  within about 60 seconds. A failed pairing attempt is ignored rather than
+  failing the connection.
 - **Bluetooth adapter or proxy** (default automatic) — automatic keeps using
   whichever adapter last connected successfully, falling back to the strongest
   signal if that one cannot see the bed. Pin a specific one to override.

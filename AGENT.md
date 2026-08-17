@@ -310,31 +310,48 @@ can actually change, so extra library-level attempts against the same route buy
 little and cost the budget. Log every round outcome, including timeouts; a
 silent wait is the worst failure mode for a button.
 
-### Reference latencies (measured on a healthy route)
+### Pairing is required on every connection
 
-Use these to judge whether a setup is actually unhealthy before changing tuning.
-Measured end-to-end as `button.press` service round-trip, on a pinned proxy with
-a bonded base:
+**These bases accept and acknowledge writes on an unpaired link but do not act
+on them.** No error, no timeout, nothing moves — the write is ACKed at the ATT
+layer and silently ignored. A stored bond is not sufficient on its own: the link
+is not re-encrypted on reconnect unless pairing is explicitly requested, and
+`client.pair()` is what triggers that.
 
-| Scenario | Round-trip | Connect portion |
-|---|---|---|
-| Warm (link still open, within keepalive) | ~0.5s | none |
-| Cold (after idle disconnect) | ~0.8-1.0s | ~0.6s |
-| Cold, with `pair` enabled | ~21s | pairing adds ~7s |
-| First connect after a Home Assistant restart | ~14-21s | one-off; settles after |
+This was established the hard way, twice. Both times the failure looked like
+"commands do nothing, no errors":
 
-Two things follow:
+| Config | Result |
+|---|---|
+| `pair` off | Writes ACKed, bed does not move |
+| `pair` on | Works |
 
-1. **A cold connect costs about a second**, which is why `always_connected`
-   defaults off. Holding links open buys ~0.5s and costs a connection slot plus,
-   on a busy proxy, sustained churn.
-2. **Leave `pair` off once a base is bonded.** It adds ~7s to every connect and
-   the bond already persists. It is a recovery action: enable it, power-cycle the
-   bed, press a button, then turn it off again. A future improvement would be to
-   have the option clear itself after a successful pairing.
+So `pair` defaults **on**, and it is not a one-time recovery action — do not
+"optimize" it away for already-bonded bases. An earlier revision did exactly
+that, reasoning that bonds persist so pairing was redundant, and broke both
+beds silently.
 
-The first connect after a restart is slow and then settles — do not tune based
-on that sample.
+Pairing is cheap in steady state: a full cold press including pairing measures
+**~0.7-1.0s** end to end.
+
+### Do not tune from post-restart samples
+
+The first connections after a Home Assistant restart take 14-21s and then settle
+to sub-second. Two such samples once led to the conclusion that pairing cost ~7s
+per connect, which is false — measured properly, connect-plus-pair is ~0.7s.
+Take at least three samples, after the system has settled, before concluding
+anything about latency.
+
+Reference figures on a healthy pinned route with a bonded, paired base:
+
+| Scenario | Round-trip |
+|---|---|
+| Warm (link open, within keepalive) | ~0.5s |
+| Cold (after idle disconnect), incl. pairing | ~0.7-1.0s |
+| First connect after a HA restart | 14-21s, one-off |
+
+Because a cold connect costs about a second even with pairing,
+`always_connected` stays off by default.
 
 ### Pairing is best effort, never fatal
 

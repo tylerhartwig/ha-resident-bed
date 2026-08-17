@@ -42,7 +42,7 @@
         },
         "data_description": {
           "keepalive": "How long to hold the connection after a button press when 'Keep the connection open' is off. Only used in that mode.",
-          "pair": "Attempt to pair on each connection. Bonds persist on the adapter, so this is normally only needed once. These bases usually accept a new bond only for about 60 seconds after a fresh power-on, so unplug the bed and plug it back in first. A failed pairing attempt is ignored rather than failing the connection.",
+          "pair": "Pair on each connection. Leave this on: these bases acknowledge writes on an unpaired link but do not act on them, so turning it off makes buttons silently do nothing. If pairing was never completed, unplug the bed and plug it back in, then press a button within about 60 seconds. A failed pairing attempt is ignored rather than failing the connection.",
           "preferred_source": "Which adapter or proxy to connect through. Automatic keeps using whichever one last connected successfully, which is what a paired bed needs, and falls back to the strongest signal if that one cannot see the bed. Pin a specific one to override that.",
           "always_connected": "Hold the Bluetooth link open instead of connecting on demand. Off by default: an on-demand reconnect is typically a second or two, and holding links open can destabilise a busy Bluetooth proxy."
         }

@@ -44,7 +44,11 @@ MAX_KEEPALIVE: Final = 3600
 # through one proxy is not usable from another, and peripherals have very few
 # bond slots. Bases that require bonding must therefore be pinned to a single
 # route -- see AGENT.md section 6.
-DEFAULT_PAIR: Final = False
+# On by default. These bases accept and acknowledge writes on an unpaired link
+# but do not act on them -- no error, nothing moves. Pairing on each connection
+# is what makes commands take effect; the stored bond alone is not enough,
+# because the link is not re-encrypted on reconnect unless pairing is requested.
+DEFAULT_PAIR: Final = True
 
 # Empty means "use whichever adapter or proxy currently hears the bed best".
 AUTOMATIC_SOURCE: Final = ""

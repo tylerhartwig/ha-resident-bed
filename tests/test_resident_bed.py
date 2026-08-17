@@ -500,3 +500,19 @@ async def test_round_budget_fits_inside_the_total_budget():
         f"{module.CONNECT_ROUNDS} rounds x {module.CONNECT_ROUND_TIMEOUT}s "
         f"exceeds the {module.CONNECT_TOTAL_TIMEOUT}s ceiling"
     )
+
+
+async def test_pairing_defaults_on_in_const():
+    import importlib.util
+    import pathlib
+
+    const_path = (
+        pathlib.Path(__file__).resolve().parents[1]
+        / "custom_components" / "resident_bed" / "const.py"
+    )
+    spec = importlib.util.spec_from_file_location("_rb_const", const_path)
+    const = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(const)
+    assert const.DEFAULT_PAIR is True, (
+        "pairing must default on: unpaired links accept writes and ignore them"
+    )
