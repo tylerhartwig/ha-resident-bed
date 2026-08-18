@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 
@@ -28,6 +29,13 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+# Startup warm-ups are serialized. Several beds are typically served by the same
+# adapter or proxy, and entries set up concurrently, so their warm-up connects
+# land within milliseconds of each other and contend for the same connection
+# slots. Observed: two beds warming up 5ms apart, the second losing a full
+# 12s round before succeeding on its retry.
+_WARMUP_LOCK = asyncio.Lock()
 
 PLATFORMS: list[Platform] = [Platform.BUTTON]
 
@@ -221,14 +229,15 @@ async def async_setup_entry(
 
 
 async def _async_initial_connect(bed: ResidentBed) -> None:
-    """Best-effort connect at startup."""
-    try:
-        await bed.async_connect()
-    except Exception as err:  # noqa: BLE001 - startup must never fail on this
-        _LOGGER.debug(
-            "%s: initial connect did not succeed (%s); will retry when the bed "
-            "advertises", bed.name, err,
-        )
+    """Best-effort connect at startup, one bed at a time."""
+    async with _WARMUP_LOCK:
+        try:
+            await bed.async_connect()
+        except Exception as err:  # noqa: BLE001 - startup must never fail on this
+            _LOGGER.debug(
+                "%s: initial connect did not succeed (%s); will retry when the "
+                "bed advertises", bed.name, err,
+            )
 
 
 async def async_unload_entry(
