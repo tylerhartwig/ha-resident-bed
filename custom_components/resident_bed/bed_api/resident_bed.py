@@ -169,9 +169,15 @@ class ResidentBed:
     # -- connection --------------------------------------------------------
 
     async def async_connect(self) -> None:
-        """Connect if not already connected. Safe to call repeatedly."""
+        """Connect if not already connected. Safe to call repeatedly.
+
+        Also arms the idle timer: a connection opened without a command (the
+        startup cache warm-up) would otherwise hold a slot indefinitely, since
+        only async_send_command used to schedule the disconnect.
+        """
         async with self._lock:
             await self._connect_locked()
+        self._schedule_disconnect()
 
     async def _connect_locked(self) -> BleakClient:
         """Connect, re-resolving the route on each round. Caller must hold the lock."""

@@ -202,14 +202,20 @@ async def async_setup_entry(
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    # Warm the connection in the background so the first press is immediate.
+    # Warm up in the background, whether or not the link is held open.
+    #
+    # The GATT service cache is per Home Assistant process, so the first
+    # connection after a restart pays full service discovery -- measured at
+    # 14-24s against ~0.6-3s once the cache is warm. Doing that here means the
+    # user's first button press does not.
+    #
     # Deliberately not awaited: the bed may be asleep or out of range, and that
-    # must not block or fail setup. The advertisement callback above will
-    # connect once it reappears.
-    if bed.always_connected:
-        entry.async_create_background_task(
-            hass, _async_initial_connect(bed), f"{DOMAIN}-connect-{address}"
-        )
+    # must not block or fail setup. The advertisement callback above reconnects
+    # once it reappears. In on-demand mode the idle timer drops this warm-up
+    # connection normally.
+    entry.async_create_background_task(
+        hass, _async_initial_connect(bed), f"{DOMAIN}-connect-{address}"
+    )
 
     return True
 

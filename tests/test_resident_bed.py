@@ -517,3 +517,20 @@ def test_pairing_defaults_on_in_const():
     assert const.DEFAULT_PAIR is True, (
         "pairing must default on: unpaired links accept writes and ignore them"
     )
+
+
+async def test_warm_connect_still_gets_dropped_when_idle(connect_recorder):
+    """A connection opened without a command must not hold a slot forever.
+
+    The startup cache warm-up connects without sending anything; only
+    async_send_command used to arm the idle timer, so that connection leaked.
+    """
+    bed = ResidentBed(
+        ADDRESS, "Test", lambda: make_device("r"),
+        keepalive=0.05, always_connected=False,
+    )
+    await bed.async_connect()
+    assert bed.is_connected
+
+    await asyncio.sleep(0.2)
+    assert not bed.is_connected, "warm-up connection was never released"

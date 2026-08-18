@@ -334,6 +334,38 @@ beds silently.
 Pairing is cheap in steady state: a full cold press including pairing measures
 **~0.7-1.0s** end to end.
 
+### Where connect latency actually goes
+
+Measured over 23 connections across two beds. Durations are strongly bimodal,
+and idle time does not explain it — a 4-hour gap connected in 3.1s while a 0s
+gap took 14.6s:
+
+| Cluster | Cause |
+|---|---|
+| ~0.6-3s | Service cache warm: no GATT discovery |
+| ~14-15s | Cold service cache: full GATT discovery, or one 10s ESPHome connect timeout plus retry |
+| ~21-24s | Two ESPHome connect timeouts (10s each) plus overhead |
+
+The GATT service cache that `use_services_cache=True` consults is per Home
+Assistant process, so the first connection to each bed after a restart pays full
+discovery. That is why `async_setup_entry` warms the connection in the
+background unconditionally — the cost lands at startup instead of on the user's
+first press.
+
+Two levers live outside this repo:
+
+- **`cache_services: true` on the ESPHome Bluetooth proxy.** Stores the GATT
+  table in the ESP's NVS, so even the first connect after a Home Assistant
+  restart skips discovery. This is the single biggest win available and it is a
+  one-line ESPHome config change.
+- **Proxy contention.** A proxy doing passive scanning while serving
+  connections will time out `bluetooth_device_connect` (10s) and retry, which is
+  where the 14s and 24s clusters come from. Check `tools/ha_diag.py adapters`
+  for slot pressure, and prefer a proxy that is not also the busiest scanner.
+
+Raising `keepalive` avoids cold connects entirely during a session of adjusting
+the bed, at the cost of holding a connection slot for that long after each use.
+
 ### Do not tune from post-restart samples
 
 The first connections after a Home Assistant restart take 14-21s and then settle
