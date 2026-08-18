@@ -366,6 +366,23 @@ Two levers live outside this repo:
 Raising `keepalive` avoids cold connects entirely during a session of adjusting
 the bed, at the cost of holding a connection slot for that long after each use.
 
+### Retry sooner, not longer
+
+Observed live with 2 rounds x 22s: both rounds timed out, the press failed after
+45s, and **the very next press connected in 1.06s**. These bases intermittently
+refuse connections for a stretch and then accept immediately, so the thing that
+succeeds is another attempt, not a longer one. Hence 4 rounds x 12s rather than
+2 x 22s, within the same overall ceiling.
+
+If you find yourself raising `CONNECT_ROUND_TIMEOUT`, check the logs first: a
+round that dies at exactly the budget is being cut off by us, while one that
+fails early is the transport giving up on its own. Only the second case is an
+argument for more time.
+
+Note that `asyncio.TimeoutError` stringifies to an empty string, so log failure
+causes through `_describe_error()` — otherwise round-failure lines end in a bare
+colon and say nothing.
+
 ### Do not tune from post-restart samples
 
 The first connections after a Home Assistant restart take 14-21s and then settle

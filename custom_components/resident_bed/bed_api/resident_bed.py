@@ -68,11 +68,16 @@ RECONNECT_MAX_DELAY = 300.0
 # 2 and 3 never ran -- the ceiling silently defeated the retry design. Keep one
 # attempt per round (we retry at the round level, where the route can actually
 # change) and give each round its own timeout that fits inside the total.
-CONNECT_ROUNDS = 2
+# Prefer more, shorter rounds over fewer long ones. Observed live: two 22s
+# rounds both timed out and the very next attempt connected in ~1s. These bases
+# intermittently refuse connections for a while and then accept immediately, so
+# what succeeds is retrying sooner, not waiting longer on one attempt.
+CONNECT_ROUNDS = 4
 ATTEMPTS_PER_ROUND = 1
-CONNECT_ROUND_TIMEOUT = 22.0
+CONNECT_ROUND_TIMEOUT = 12.0
 
 # Hard ceiling so a button press can never hang indefinitely.
+# Invariant (asserted in tests): ROUNDS * ROUND_TIMEOUT <= TOTAL.
 CONNECT_TOTAL_TIMEOUT = 50.0
 
 
@@ -266,7 +271,7 @@ class ResidentBed:
                 _LOGGER.debug(
                     "%s: round %s/%s via %s failed after %.0fs budget: %s",
                     self.name, round_number, CONNECT_ROUNDS, route,
-                    CONNECT_ROUND_TIMEOUT, err,
+                    CONNECT_ROUND_TIMEOUT, _describe_error(err),
                 )
                 # Give the next round a chance to see a fresher/nearer route.
                 await asyncio.sleep(0.5)
@@ -286,7 +291,7 @@ class ResidentBed:
             raise ResidentBedNotFound(str(last_error)) from last_error
         raise ResidentBedError(
             f"Failed to connect to {self.name} after {CONNECT_ROUNDS} rounds: "
-            f"{last_error}"
+            f"{_describe_error(last_error)}"
         ) from last_error
 
     async def _try_pair(self, client: BleakClient) -> None:
@@ -492,6 +497,17 @@ class ResidentBed:
             return
         self._reconnect_delay = RECONNECT_MIN_DELAY
         self._schedule_reconnect()
+
+
+def _describe_error(err: BaseException | None) -> str:
+    """Readable error text.
+
+    asyncio.TimeoutError stringifies to "", which produced log lines ending in
+    a bare colon and told us nothing about why a round failed.
+    """
+    if err is None:
+        return "unknown error"
+    return str(err) or type(err).__name__
 
 
 def _find_writable(client: BleakClient, uuid: str):

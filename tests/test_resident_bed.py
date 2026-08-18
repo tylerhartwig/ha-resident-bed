@@ -495,6 +495,10 @@ async def test_round_budget_fits_inside_the_total_budget():
     exhausted a 45s ceiling and later rounds never executed.
     """
     worst_case = module.CONNECT_ROUNDS * module.CONNECT_ROUND_TIMEOUT
+    assert module.CONNECT_ROUNDS >= 3, (
+        "these bases refuse connections then accept immediately; retrying "
+        "sooner is what succeeds, so prefer several short rounds"
+    )
     assert module.ATTEMPTS_PER_ROUND == 1, "round-level retry is where routes change"
     assert worst_case <= module.CONNECT_TOTAL_TIMEOUT, (
         f"{module.CONNECT_ROUNDS} rounds x {module.CONNECT_ROUND_TIMEOUT}s "
@@ -534,3 +538,16 @@ async def test_warm_connect_still_gets_dropped_when_idle(connect_recorder):
 
     await asyncio.sleep(0.2)
     assert not bed.is_connected, "warm-up connection was never released"
+
+
+async def test_round_failures_report_a_cause(connect_recorder):
+    """asyncio.TimeoutError stringifies to empty; failures must still say why."""
+    connect_recorder["behaviour"] = lambda route, attempt: TimeoutError()
+    bed = ResidentBed(ADDRESS, "Test", lambda: make_device("r"), always_connected=False)
+
+    with pytest.raises(ResidentBedError) as excinfo:
+        await bed.async_connect()
+
+    assert "TimeoutError" in str(excinfo.value), (
+        f"failure message gives no cause: {excinfo.value!r}"
+    )
